@@ -37,10 +37,12 @@ import types::*;
         };
     end
 
-
+    // ---------------------------------------------------------------------
+    // Assertions
+    // ---------------------------------------------------------------------
+    
     property p_gnt_one_hot;
-        @(posedge clk)
-        $onehot0(gnt) || (gnt == 0);
+        @(posedge clk) $onehot0(gnt);
     endproperty
     assert_p_gnt_one_hot: assert property (p_gnt_one_hot) else $error("gnt is not one-hot");
 

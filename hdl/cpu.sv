@@ -1,5 +1,5 @@
-import types::*;
 module cpu
+import types::*;
 (
     input   logic           clk,
     input   logic           rst

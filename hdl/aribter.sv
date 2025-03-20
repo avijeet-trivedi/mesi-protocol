@@ -28,7 +28,7 @@ import types::*;
             if (!grant_valid && req[idx] && !transient_stall) begin
                 gnt[idx] = '1;
                 grant_valid = '1;
-                priority_next = idx + 1; // Update priority to next CPU
+                priority_next = NUM_CPUS'(idx + 1); // Update priority to next CPU
             end
         end
     end

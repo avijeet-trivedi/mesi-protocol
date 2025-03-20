@@ -1,5 +1,5 @@
-import types::*;
 module core
+import types::*;
 #(
     parameter ID
 )
@@ -86,7 +86,9 @@ module core
         end else begin
             if (cpu_state == CPU_IDLE && cpu_ready) begin
                 if ($fscanf(fd, "%d %d %d", test_state, addr_file, wdata_file) != 3) begin
-                    $error("End of test vector");
+                    $display("===========================================================");
+                    $display("Core %0d: End of test vector", ID);
+                    $display("===========================================================");
                     $finish;
                 end else begin
                     if (test_state != CPU_IDLE) begin
@@ -105,7 +107,6 @@ module core
         end
     end
 
-
     /***** SVA *****/
 
     // // Check that wdata is 0 when not writing
@@ -121,6 +122,9 @@ module core
     //     (cpu_state == CPU_READ || cpu_state == CPU_WRITE) |-> s_eventually (resp && (cpu_state == CPU_IDLE));
     // endproperty
     // assert property (p_read_write_idle) else $error("Read or write state not followed by IDLE state");
+
+    logic [CACHELINE_SIZE-1:0] cpu_rdata_NC = cpu_rdata;
+
 endmodule
 
 

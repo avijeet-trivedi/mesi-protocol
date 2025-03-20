@@ -1,5 +1,5 @@
-import types::*;
 module memory
+import types::*;
 (
     input   logic           clk,
     input   logic           rst,
@@ -9,8 +9,25 @@ module memory
     input   bus_msg_t       bus_msg
 );
 
-
     logic [2**XLEN-1:0][CACHELINE_SIZE-1:0] mem;
+
+    logic wb_vld;
+    logic [$clog2(NUM_CPUS)-1:0] wb_idx;
+    logic [CACHELINE_SIZE-1:0] wb_data;
+    logic [XLEN-1:0] wb_addr;
+
+    always_comb begin
+        wb_vld = '0;
+        wb_idx = '0;
+        for (int i = 0; i < NUM_CPUS; i++) begin
+            if (xbar_in[i].valid && xbar_in[i].writeback == '1) begin 
+                wb_vld  = '1;
+                wb_idx  = ($clog2(NUM_CPUS))'(i);
+            end
+        end
+        wb_data = wb_vld ? xbar_in[wb_idx].data : '0;
+        wb_addr = wb_vld ? xbar_in[wb_idx].addr : '0;
+    end
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -18,26 +35,27 @@ module memory
                 mem[i] <= CACHELINE_SIZE'(i);
             end
         end else begin
-            xbar_out <= '0;
 
-            // Feel free to change the logic here as needed
-            if (bus_msg.valid) begin
-                unique case (bus_msg.bus_tx) 
-                    Bus_Rd: begin
-                        // Read from memory
-                        xbar_out.valid <= 1;
-                        xbar_out.addr <= bus_msg.addr;
-                        xbar_out.data <= mem[bus_msg.addr];
-                        xbar_out.destination <= bus_msg.source;
-                    end
-                
-                    // Do we need to handle other bus transactions?
-
-                    default: begin
-                        
-                    end
-                endcase
+            if (wb_vld) begin
+                mem[wb_addr] <= wb_data;
             end
+        end
+    end
+
+    // Read data from memory and send it to the crossbar
+    always_comb begin
+        if (bus_msg.valid && (bus_msg.bus_tx == BusGetS || bus_msg.bus_tx == BusGetM)) begin
+            xbar_out.valid = '1;
+            xbar_out.addr = bus_msg.addr;
+            xbar_out.data = mem[bus_msg.addr];
+            xbar_out.destination = bus_msg.source;
+            xbar_out.writeback = '0;
+        end else begin
+            xbar_out.valid = '0;
+            xbar_out.addr = '0;
+            xbar_out.data = '0;
+            xbar_out.destination = '0;
+            xbar_out.writeback = '0;
         end
     end
 

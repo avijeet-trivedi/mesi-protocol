@@ -1,9 +1,9 @@
 package types;
 
-    parameter NUM_CPUS = 2;
-    parameter NUM_SETS = 2;
+    parameter NUM_CPUS = 4;
+    parameter NUM_SETS = 4;
 
-    parameter XLEN = 4;
+    parameter XLEN = 6;
     parameter CACHELINE_SIZE = 8;
 
     parameter INDEX_WIDTH = $clog2(NUM_SETS);
@@ -16,18 +16,21 @@ package types;
     } cpu_state_t;
 
     typedef enum {
-        Bus_Idle,
-        Bus_Rd
-         // What else do we need?
+        BusIdle,
+        BusGetS,
+        BusGetM,
+        BusPutM
     } bus_tx_t;
 
     typedef enum {
-        M, // Modified
-        E, // Exclusive
-        S, // Shared
-        I  // Invalid
-
-        // Do we need transient states?
+        M, 
+        E,
+        S, 
+        I,
+        IS,
+        IM,
+        SM,
+        MI
     } cacheline_state_t;
 
     typedef struct packed {
@@ -38,16 +41,17 @@ package types;
 
     typedef struct packed {
         logic valid;
-        logic [$clog2(NUM_CPUS):0] source;
+        logic [$clog2(NUM_CPUS)-1:0] source;
         logic [XLEN-1:0] addr;
         bus_tx_t bus_tx;
     } bus_msg_t;
 
     typedef struct packed {
         logic valid;
-        logic [$clog2(NUM_CPUS):0] destination;
+        logic [$clog2(NUM_CPUS)-1:0] destination;
         logic [XLEN-1:0] addr;
         logic [CACHELINE_SIZE-1:0] data;
+        logic writeback;
     } xbar_msg_t;
 
 endpackage
