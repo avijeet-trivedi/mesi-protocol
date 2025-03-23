@@ -420,17 +420,17 @@ import types::*;
     // Invalid State
     property p_state_i_exclusive_read(int i);
         @(posedge clk) 
-        (cacheline[i].state == I && load_hit) ##1 (cacheline[i].state == IS) ##[0:(NUM_CPUS-1)] (cacheline[i].state == IS && ownGetS && xbar_data_resp_mem) ##1 (cacheline[i].state == E);
+        (cacheline[i].state == I && load_hit) ##1 (cacheline[i].state == IS) ##[0:(NUM_CPUS-1)] (cacheline[i].state == IS && ownGetS && bus_msg_index == INDEX_WIDTH'(i) && xbar_data_resp_mem) ##1 (cacheline[i].state == E);
     endproperty
 
     property p_state_i_shared_read(int i);
         @(posedge clk) 
-        (cacheline[i].state == I && load_hit) ##1 (cacheline[i].state == IS) ##[0:(NUM_CPUS-1)] (cacheline[i].state == IS && ownGetS && !xbar_data_resp_mem) ##1 (cacheline[i].state == S);
+        (cacheline[i].state == I && load_hit) ##1 (cacheline[i].state == IS) ##[0:(NUM_CPUS-1)] (cacheline[i].state == IS && ownGetS && bus_msg_index == INDEX_WIDTH'(i) && !xbar_data_resp_mem) ##1 (cacheline[i].state == S);
     endproperty
 
     property p_state_i_write(int i);
         @(posedge clk) 
-        (cacheline[i].state == I && store_hit) ##1 (cacheline[i].state == IM) ##[0:(NUM_CPUS-1)] (cacheline[i].state == IM && ownGetM) ##1 (cacheline[i].state == M);
+        (cacheline[i].state == I && store_hit) ##1 (cacheline[i].state == IM) ##[0:(NUM_CPUS-1)] (cacheline[i].state == IM && ownGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == M);
     endproperty
 
     // Shared state
@@ -441,81 +441,91 @@ import types::*;
 
     property p_state_s_write_with_othergetm_seen_first(int i);
         @(posedge clk) 
-        (cacheline[i].state == S && store_hit) ##1 (cacheline[i].state == SM) ##[0:(NUM_CPUS-1)] (cacheline[i].state == SM && otrGetM) ##1 (cacheline[i].state == IM) ##[0:(NUM_CPUS-2)] (cacheline[i].state == IM && ownGetM) ##1 (cacheline[i].state == M);
+        (cacheline[i].state == S && store_hit) ##1 (cacheline[i].state == SM) ##[0:(NUM_CPUS-1)] (cacheline[i].state == SM && otrGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == IM) ##[0:(NUM_CPUS-2)] (cacheline[i].state == IM && ownGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == M);
     endproperty
 
     property p_state_s_write_with_owngetm_seen_first(int i);
         @(posedge clk) 
-        (cacheline[i].state == S && store_hit) ##1 (cacheline[i].state == SM) ##[0:(NUM_CPUS-1)] (cacheline[i].state == SM && ownGetM) ##1 (cacheline[i].state == M);
+        (cacheline[i].state == S && store_hit) ##1 (cacheline[i].state == SM) ##[0:(NUM_CPUS-1)] (cacheline[i].state == SM && ownGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == M);
     endproperty
 
     property p_state_s_replacement(int i);
         @(posedge clk) 
-        (cacheline[i].state == S && replacement) ##1 (cacheline[i].state == I);
+        (cacheline[i].state == S && replacement && cpu_req_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == I);
     endproperty
 
     property p_state_s_othergetm(int i);
         @(posedge clk) 
-        (cacheline[i].state == S && otrGetM) ##1 (cacheline[i].state == I);
+        (cacheline[i].state == S && otrGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == I);
     endproperty
 
     // Exclusive state
     property p_state_e_read(int i);
         @(posedge clk) 
-        (cacheline[i].state == E) && (load_hit) && cpu_resp;
+        (cacheline[i].state == E) && (load_hit && cpu_req_index == INDEX_WIDTH'(i)) && cpu_resp;
     endproperty
 
     property p_state_e_write(int i);
         @(posedge clk) 
-        (cacheline[i].state == E && cpu_resp) ##1 (cacheline[i].state == M);  // We resp and initiate write in E state and then move to M
+        (cacheline[i].state == E && cpu_resp && cpu_req_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == M);  // We respond in the and initiate write in the same cycle and then move to M
     endproperty
 
     property p_state_e_othergets(int i);
         @(posedge clk) 
-        (cacheline[i].state == E && otrGetS) ##1 (cacheline[i].state == S);
+        (cacheline[i].state == E && otrGetS && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == S);
     endproperty
 
     property p_state_e_replacement(int i);
         @(posedge clk) 
-        (cacheline[i].state == E && replacement) ##1 (cacheline[i].state == I);
+        (cacheline[i].state == E && replacement && cpu_req_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == I);
     endproperty
 
     property p_state_e_othergetm(int i);
         @(posedge clk) 
-        (cacheline[i].state == E && otrGetM) ##1 (cacheline[i].state == I);
+        (cacheline[i].state == E && otrGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == I);
     endproperty
 
     // Modify State
     property p_state_m_read(int i);
         @(posedge clk) 
-        (cacheline[i].state == M) && (load_hit) && cpu_resp;
+        (cacheline[i].state == M) && (load_hit && cpu_req_index == INDEX_WIDTH'(i)) && cpu_resp;
     endproperty
 
     property p_state_m_write(int i);
         @(posedge clk) 
-        (cacheline[i].state == M) && (store_hit) && cpu_resp;
+        (cacheline[i].state == M) && (store_hit && cpu_req_index == INDEX_WIDTH'(i)) && cpu_resp;
+    endproperty
+
+    property p_state_m_othergets(int i);
+        @(posedge clk) 
+        ((cacheline[i].state == M && otrGetS && bus_msg_index == INDEX_WIDTH'(i) && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b1) ##1 (cacheline[i].state == S));
+    endproperty
+
+    property p_state_m_othergetm(int i);
+        @(posedge clk) 
+        ((cacheline[i].state == M && otrGetM && bus_msg_index == INDEX_WIDTH'(i) && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0) ##1 (cacheline[i].state == I));
     endproperty
 
     property p_state_m_replacement_with_othergets_seen_first(int i);
         @(posedge clk) 
-        ((cacheline[i].state == M && replacement) ##1 (cacheline[i].state == MI)) ##[0:(NUM_CPUS-1)] (cacheline[i].state == MI && otrGetS) ##1 (cacheline[i].state == MI);
+        ((cacheline[i].state == M && replacement && cpu_req_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == MI)) ##[0:(NUM_CPUS-1)] (cacheline[i].state == MI && otrGetS && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == MI);
     endproperty
 
     property p_state_m_replacement_with_othergetm_seen_first(int i);
         @(posedge clk) 
-        ((cacheline[i].state == M && replacement) ##1 (cacheline[i].state == MI)) ##[0:(NUM_CPUS-1)] (cacheline[i].state == MI && otrGetM) ##1 (cacheline[i].state == MI);
+        ((cacheline[i].state == M && replacement && cpu_req_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == MI)) ##[0:(NUM_CPUS-1)] (cacheline[i].state == MI && otrGetM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == MI);
     endproperty
 
     property p_state_m_replacement_with_ownputm_seen_first(int i);
         @(posedge clk) 
-        ((cacheline[i].state == M && replacement) ##1 (cacheline[i].state == MI)) ##[0:(NUM_CPUS-1)] (cacheline[i].state == MI && ownPutM) ##1 (cacheline[i].state == I);
+        ((cacheline[i].state == M && replacement && cpu_req_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == MI)) ##[0:(NUM_CPUS-1)] (cacheline[i].state == MI && ownPutM && bus_msg_index == INDEX_WIDTH'(i)) ##1 (cacheline[i].state == I);
     endproperty
 
     // ---------------------------------------------------------------------
     // Covers
     // ---------------------------------------------------------------------
 
-    for (genvar i = 0; i < NUM_SETS; i++) begin: state_transition
+    for (genvar i = 0; i < NUM_SETS; i++) begin: state_transition_covers
         // Invalid State
         cp_state_i_exclusive_read: cover property (p_state_i_exclusive_read(i));
         cp_state_i_shared_read: cover property (p_state_i_shared_read(i));
@@ -538,13 +548,15 @@ import types::*;
         // Modify State
         cp_state_m_read: cover property (p_state_m_read(i));
         cp_state_m_write: cover property (p_state_m_write(i));
+        cp_state_m_othergets: cover property (p_state_m_othergets(i));
+        cp_state_m_othergetm: cover property (p_state_m_othergetm(i));
         cp_state_m_replacement_with_othergets_seen_first: cover property (p_state_m_replacement_with_othergets_seen_first(i));
         cp_state_m_replacement_with_othergetm_seen_first: cover property (p_state_m_replacement_with_othergetm_seen_first(i));
         cp_state_m_replacement_with_ownputm_seen_first: cover property (p_state_m_replacement_with_ownputm_seen_first(i));
 
     end
 
-    for (genvar i = 0; i < NUM_SETS; i++) begin: state_reach
+    for (genvar i = 0; i < NUM_SETS; i++) begin: state_reach_covers
         cp_state_m : cover property (@(posedge clk) cacheline[i].state == M);
         cp_state_e : cover property (@(posedge clk) cacheline[i].state == E);
         cp_state_s : cover property (@(posedge clk) cacheline[i].state == S);
@@ -555,15 +567,47 @@ import types::*;
         cp_state_mi: cover property (@(posedge clk) cacheline[i].state == MI);        
     end
 
+    for (genvar i = 0; i < NUM_SETS; i++) begin: correct_receive_data_event_covers
+        cp_is_owngets_seen_rcvd_data : cover property (@(posedge clk) ((cacheline[i].state == IS && bus_msg_index == INDEX_WIDTH'(i) && ownGetS && xbar_vld)));
+        cp_im_owngetm_seen_rcvd_data : cover property (@(posedge clk) ((cacheline[i].state == IM && bus_msg_index == INDEX_WIDTH'(i) && ownGetM && xbar_vld)));
+        cp_sm_owngetm_seen_rcvd_data : cover property (@(posedge clk) ((cacheline[i].state == SM && bus_msg_index == INDEX_WIDTH'(i) && ownGetM && xbar_vld)));
+    end
+
+    for (genvar i = 0; i < NUM_SETS; i++) begin: correct_send_data_event_covers
+        cp_e_otrgetm_seen_send_data_to_req          : cover property (@(posedge clk) ((cacheline[i].state == E  && bus_msg_index == INDEX_WIDTH'(i) && otrGetM && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        cp_e_otrgets_seen_send_data_to_req          : cover property (@(posedge clk) ((cacheline[i].state == E  && bus_msg_index == INDEX_WIDTH'(i) && otrGetS && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        cp_m_otrgetm_seen_send_data_to_req          : cover property (@(posedge clk) ((cacheline[i].state == M  && bus_msg_index == INDEX_WIDTH'(i) && otrGetM && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        cp_m_otrgets_seen_send_data_to_req_and_mem  : cover property (@(posedge clk) ((cacheline[i].state == M  && bus_msg_index == INDEX_WIDTH'(i) && otrGetS && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b1)));
+        cp_mi_ownputm_seen_send_data_to_mem         : cover property (@(posedge clk) ((cacheline[i].state == MI && bus_msg_index == INDEX_WIDTH'(i) && ownPutM && xbar_out.valid && xbar_out.destination == '0             && xbar_out.writeback == 1'b1)));
+        cp_mi_otrgetm_seen_send_data_to_req         : cover property (@(posedge clk) ((cacheline[i].state == MI && bus_msg_index == INDEX_WIDTH'(i) && otrGetM && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        cp_mi_otrgets_seen_send_data_to_req_and_mem : cover property (@(posedge clk) ((cacheline[i].state == MI && bus_msg_index == INDEX_WIDTH'(i) && otrGetS && xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b1)));
+    end
+
     // ---------------------------------------------------------------------
     // Assertions
     // ---------------------------------------------------------------------
 
-    i_owngetm_implies_xbar_i_vld: assert property (@(posedge clk) ownGetM |-> xbar_vld);
-    i_owngets_implied_xbar_i_vld: assert property (@(posedge clk) ownGetS |-> xbar_vld);
-    i_ownputm_implied_xbar_o_vld: assert property (@(posedge clk) ownPutM |-> (xbar_out.valid && xbar_out.writeback));
+    // Legal Data Bus Input Events
+    ap_owngets_implies_xbar_i_vld: assert property (@(posedge clk) ownGetS |-> xbar_vld);
+    ap_owngetm_implies_xbar_i_vld: assert property (@(posedge clk) ownGetM |-> xbar_vld);
 
-    for (genvar i = 0; i < NUM_SETS; i++) begin: illegal_state_transition_check 
+    for (genvar i = 0; i < NUM_SETS; i++) begin: correct_rcvd_data_event_checks
+        ap_is_owngets_seen_rcvd_data : assert property (@(posedge clk) ((cacheline[i].state == IS && bus_msg_index == INDEX_WIDTH'(i) && ownGetS) |-> (xbar_vld)));
+        ap_im_owngetm_seen_rcvd_data : assert property (@(posedge clk) ((cacheline[i].state == IM && bus_msg_index == INDEX_WIDTH'(i) && ownGetM) |-> (xbar_vld)));
+        ap_sm_owngetm_seen_rcvd_data : assert property (@(posedge clk) ((cacheline[i].state == SM && bus_msg_index == INDEX_WIDTH'(i) && ownGetM) |-> (xbar_vld)));
+    end
+
+    for (genvar i = 0; i < NUM_SETS; i++) begin: correct_send_data_event_checks
+        ap_e_otrgetm_seen_send_data_to_req          : assert property (@(posedge clk) ((cacheline[i].state == E  && bus_msg_index == INDEX_WIDTH'(i) && otrGetM) |-> (xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        ap_e_otrgets_seen_send_data_to_req          : assert property (@(posedge clk) ((cacheline[i].state == E  && bus_msg_index == INDEX_WIDTH'(i) && otrGetS) |-> (xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        ap_m_otrgetm_seen_send_data_to_req          : assert property (@(posedge clk) ((cacheline[i].state == M  && bus_msg_index == INDEX_WIDTH'(i) && otrGetM) |-> (xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        ap_m_otrgets_seen_send_data_to_req_and_mem  : assert property (@(posedge clk) ((cacheline[i].state == M  && bus_msg_index == INDEX_WIDTH'(i) && otrGetS) |-> (xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b1)));
+        ap_mi_ownputm_seen_send_data_to_mem         : assert property (@(posedge clk) ((cacheline[i].state == MI && bus_msg_index == INDEX_WIDTH'(i) && ownPutM) |-> (xbar_out.valid && xbar_out.destination == '0             && xbar_out.writeback == 1'b1)));
+        ap_mi_otrgetm_seen_send_data_to_req         : assert property (@(posedge clk) ((cacheline[i].state == MI && bus_msg_index == INDEX_WIDTH'(i) && otrGetM) |-> (xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b0)));
+        ap_mi_otrgets_seen_send_data_to_req_and_mem : assert property (@(posedge clk) ((cacheline[i].state == MI && bus_msg_index == INDEX_WIDTH'(i) && otrGetS) |-> (xbar_out.valid && xbar_out.destination == bus_msg.source && xbar_out.writeback == 1'b1)));
+    end
+
+    for (genvar i = 0; i < NUM_SETS; i++) begin: correct_state_transition_checks 
         ap_transition_m  : assert property (@(posedge clk) ((cacheline[i].state == M)  |=> cacheline[i].state inside {M,MI,S,I}));
         ap_transition_e  : assert property (@(posedge clk) ((cacheline[i].state == E)  |=> cacheline[i].state inside {M,E,S,I}));
         ap_transition_s  : assert property (@(posedge clk) ((cacheline[i].state == S)  |=> cacheline[i].state inside {S,I,SM}));
@@ -574,7 +618,7 @@ import types::*;
         ap_transition_mi : assert property (@(posedge clk) ((cacheline[i].state == MI) |=> cacheline[i].state inside {MI,I}));
     end
 
-    for (genvar i = 0; i < NUM_SETS; i++) begin: illegal_bus_req 
+    for (genvar i = 0; i < NUM_SETS; i++) begin: correct_bus_req_checks
         ap_m  : assert property (@(posedge clk) ((cacheline[i].state ==  M && bus_msg_index == INDEX_WIDTH'(i)) |-> (not (ownGetS || ownGetM || ownPutM))));
         ap_e  : assert property (@(posedge clk) ((cacheline[i].state ==  E && bus_msg_index == INDEX_WIDTH'(i)) |-> (not (ownGetS || ownGetM || ownPutM))));
         ap_s  : assert property (@(posedge clk) ((cacheline[i].state ==  S && bus_msg_index == INDEX_WIDTH'(i)) |-> (not (ownGetS || ownGetM || ownPutM))));
